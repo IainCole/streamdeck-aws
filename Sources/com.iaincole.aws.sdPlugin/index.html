@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>com.iaincole.aws</title>
+    <meta charset="utf-8" />
+    <script src="aws-sdk-2.630.0.min.js"></script>
+  </head>
+
+  <body>
+    <script>
+      var websocket = null;
+      var pluginUUID = null;
+
+      var DestinationEnum = Object.freeze({
+        HARDWARE_AND_SOFTWARE: 0,
+        HARDWARE_ONLY: 1,
+        SOFTWARE_ONLY: 2
+      });
+
+      var invokeLambdaAction = {
+        type: "com.iaincole.aws.action",
+
+        onKeyUp: function(context, settings, coordinates, userDesiredState) {
+          var awsRegion = "";
+          if (settings != null && settings.hasOwnProperty("awsRegion")) {
+            awsRegion = settings["awsRegion"];
+          }
+
+          var awsAccessKeyId = "";
+          if (settings != null && settings.hasOwnProperty("awsAccessKeyId")) {
+            awsAccessKeyId = settings["awsAccessKeyId"];
+          }
+
+          var awsSecretAccessKey = "";
+          if (
+            settings != null &&
+            settings.hasOwnProperty("awsSecretAccessKey")
+          ) {
+            awsSecretAccessKey = settings["awsSecretAccessKey"];
+          }
+
+          var functionArn = "";
+          if (settings != null && settings.hasOwnProperty("functionArn")) {
+            functionArn = settings["functionArn"];
+          }
+
+          var functionParameters = "";
+          if (
+            settings != null &&
+            settings.hasOwnProperty("functionParameters")
+          ) {
+            functionParameters = settings["functionParameters"];
+          }
+
+          if (
+            !awsRegion ||
+            !awsAccessKeyId ||
+            !awsSecretAccessKey ||
+            !functionArn
+          ) {
+            return;
+          }
+
+          // Configure AWS SDK for JavaScript
+          AWS.config.update({ region: awsRegion });
+          AWS.config.credentials = new AWS.Credentials(
+            awsAccessKeyId,
+            awsSecretAccessKey
+          );
+
+          var lambda = new AWS.Lambda({
+            apiVersion: "2015-03-31"
+          });
+
+          lambda.invoke(
+            {
+              FunctionName: functionArn,
+              InvocationType: "RequestResponse",
+              Payload: functionParameters
+            },
+            function(err, data) {
+              var resultEvent = "showOk";
+              if (err || data.FunctionError) {
+                resultEvent = "showAlert";
+              }
+
+              var json = {
+                event: resultEvent,
+                context: context
+              };
+
+              websocket.send(JSON.stringify(json));
+            }
+          );
+        },
+
+        SetSettings: function(context, settings) {
+          var json = {
+            event: "setSettings",
+            context: context,
+            payload: settings
+          };
+
+          websocket.send(JSON.stringify(json));
+        }
+      };
+
+      function connectElgatoStreamDeckSocket(
+        inPort,
+        inPluginUUID,
+        inRegisterEvent,
+        inInfo
+      ) {
+        pluginUUID = inPluginUUID;
+
+        // Open the web socket
+        websocket = new WebSocket("ws://127.0.0.1:" + inPort);
+
+        function registerPlugin(inPluginUUID) {
+          var json = {
+            event: inRegisterEvent,
+            uuid: inPluginUUID
+          };
+
+          websocket.send(JSON.stringify(json));
+        }
+
+        websocket.onopen = function() {
+          // WebSocket is connected, send message
+          registerPlugin(pluginUUID);
+        };
+
+        websocket.onmessage = function(evt) {
+          // Received message from Stream Deck
+          var jsonObj = JSON.parse(evt.data);
+          var event = jsonObj["event"];
+          var action = jsonObj["action"];
+          var context = jsonObj["context"];
+          var jsonPayload = jsonObj["payload"] || {};
+
+          var actionObject;
+
+          switch (action) {
+            case "com.iaincole.aws.invokelambda.action":
+              actionObject = invokeLambdaAction;
+              break;
+          }
+
+          if (!actionObject) {
+            return;
+          }
+
+          if (event == "keyUp") {
+            var settings = jsonPayload["settings"];
+            var coordinates = jsonPayload["coordinates"];
+            var userDesiredState = jsonPayload["userDesiredState"];
+            actionObject.onKeyUp(
+              context,
+              settings,
+              coordinates,
+              userDesiredState
+            );
+          } else if (event == "sendToPlugin") {
+            if (jsonPayload.hasOwnProperty("settings")) {
+              actionObject.SetSettings(context, jsonPayload.settings);
+            }
+
+            if (jsonPayload.hasOwnProperty("background-image")) {
+              const imageName = jsonPayload["background-image"];
+
+              loadImageAsDataUri(`${imageName}.png`, function(imgUrl) {
+                var json = {
+                  event: "setImage",
+                  context: context,
+                  payload: {
+                    image: imgUrl || "",
+                    target: DestinationEnum.HARDWARE_AND_SOFTWARE
+                  }
+                };
+                websocket.send(JSON.stringify(json));
+              });
+            }
+          }
+        };
+
+        websocket.onclose = function() {
+          // Websocket is closed
+        };
+      }
+
+      function loadImageAsDataUri(url, callback) {
+        var image = new Image();
+
+        image.onload = function() {
+          var canvas = document.createElement("canvas");
+
+          canvas.width = this.naturalWidth;
+          canvas.height = this.naturalHeight;
+
+          var ctx = canvas.getContext("2d");
+          ctx.drawImage(this, 0, 0);
+          callback(canvas.toDataURL("image/png"));
+        };
+
+        image.src = url;
+      }
+    </script>
+  </body>
+</html>

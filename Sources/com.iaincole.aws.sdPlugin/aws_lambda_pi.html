@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>com.iaincole.aws.invokelambda.pi</title>
+    <link rel="stylesheet" href="sdpi.css" />
+    <script src="common.js"></script>
+  </head>
+
+  <body>
+    <div class="sdpi-wrapper">
+    <div class="sdpi-item">
+        <input class="sdpi-item-value" id="aws_region" placeholder="AWS Region" required oninput="saveSettings()">
+    </div>
+    <div class="sdpi-item">
+        <input class="sdpi-item-value" id="aws_access_key_id" placeholder="AWS Access Key ID" required oninput="saveSettings()">
+    </div>
+    <div class="sdpi-item">
+        <input class="sdpi-item-value" id="aws_secret_access_key" placeholder="AWS Secret Access Key" required oninput="saveSettings()">
+    </div>
+    <div class="sdpi-item">
+        <input class="sdpi-item-value" id="function_arn" placeholder="Function ARN" required oninput="saveSettings()">
+    </div>
+    <div type="textarea" class="sdpi-item">
+        <div class="sdpi-item-value textarea">
+            <textarea style="width:97%;" type="textarea" id="function_parameters" placeholder="JSON Parameters" oninput="saveSettings()"></textarea>
+        </div>
+    </div>
+
+    <script>
+      var pluginAction = null,
+          savedSettings = null,
+          uuid = "";
+
+      if ($SD) {
+        $SD.on("connected", function(jsonObj) {
+          uuid = jsonObj["uuid"];
+
+          if (jsonObj.hasOwnProperty("actionInfo")) {
+            pluginAction = jsonObj.actionInfo["action"];
+            savedSettings = jsonObj.actionInfo.payload.settings;
+          }
+
+          if (savedSettings.awsRegion) {
+            document.getElementById("aws_region").value = savedSettings.awsRegion;
+          }
+
+          if (savedSettings.awsAccessKeyId) {
+            document.getElementById("aws_access_key_id").value = savedSettings.awsAccessKeyId;
+          }
+
+          if (savedSettings.awsSecretAccessKey) {
+            document.getElementById("aws_secret_access_key").value = savedSettings.awsSecretAccessKey;
+          }
+
+          if (savedSettings.functionArn) {
+            document.getElementById("function_arn").value = savedSettings.functionArn;
+          }
+
+          if (savedSettings.functionParameters) {
+            document.getElementById("function_parameters").value = savedSettings.functionParameters;
+          }
+        });
+      }
+
+      function saveSettings() {
+        var settings = {
+          awsRegion: document.getElementById("aws_region").value,
+          awsAccessKeyId: document.getElementById("aws_access_key_id").value,
+          awsSecretAccessKey: document.getElementById("aws_secret_access_key").value,
+          functionArn: document.getElementById("function_arn").value,
+          functionParameters: document.getElementById("function_parameters").value,
+        }
+
+        sendValueToPlugin(settings, 'settings')
+      }
+
+      function sendValueToPlugin(value, param) {
+        var failed = false;
+
+        // console.log("SENDING VALUE TO PLUGIN: ", value, uuid, pluginAction);
+        if ($SD && $SD.connection && !failed) {
+          var payload = {};
+          if (param) {
+            payload[param] = value;
+          }
+          $SD.api.sendToPlugin(uuid, pluginAction, payload);
+        }
+      }
+    </script>
+  </body>
+</html>

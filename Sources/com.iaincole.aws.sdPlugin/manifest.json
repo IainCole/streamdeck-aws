@@ -1,0 +1,42 @@
+{
+  "Actions": [
+    {
+      "Icon": "media/lambda",
+      "Name": "Invoke Lambda",
+      "States": [
+        {
+          "Image": "media/lambda",
+          "TitleAlignment": "bottom",
+          "FontSize": "10"
+        }
+      ],
+      "SupportedInMultiActions": true,
+      "Tooltip": "This action invokes an AWS Lambda Function",
+      "UUID": "com.iaincole.aws.invokelambda.action",
+      "PropertyInspectorPath": "aws_lambda_pi.html"
+    }
+  ],
+  "SDKVersion": 2,
+  "Author": "Iain Cole",
+  "Category": "AWS [IainCole]",
+  "CategoryIcon": "media/aws",
+  "CodePath": "index.html",
+  "Description": "Invoke a Lambda function from your Stream Deck",
+  "Name": "AWS [IainCole]",
+  "Icon": "media/aws",
+  "URL": "https://github.com/IainCole/streamdeck-aws",
+  "Version": "1.0",
+  "OS": [
+    {
+      "Platform": "mac",
+      "MinimumVersion": "10.11"
+    },
+    {
+      "Platform": "windows",
+      "MinimumVersion": "10"
+    }
+  ],
+  "Software": {
+    "MinimumVersion": "4.1"
+  }
+}
